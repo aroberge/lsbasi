@@ -102,3 +102,8 @@ def test_do_addition_with_spaces():
 def test_do_subtraction_with_spaces():
     interpreter = my_calc.Interpreter(" 33 -  22")
     assert interpreter.expr() == 11
+
+
+def test_two_additions():
+    interpreter = my_calc.Interpreter("1 + 2 + 3")
+    assert interpreter.expr() == 6
