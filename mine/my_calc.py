@@ -2,33 +2,35 @@
 adding changes from the original, one version at a time."""
 
 # Token types
-EOF = 'EOF'
-INTEGER = 'INTEGER'
-MINUS = 'MINUS'
-PLUS = 'PLUS'
+DIV = "DIV"
+EOF = "EOF"
+INTEGER = "INTEGER"
+MINUS = "MINUS"
+MUL = "MUL"
+PLUS = "PLUS"
+LPAREN = "LPAREN"
+RPAREN = "RPAREN"
+
+OPERATORS = {"/": DIV, "-": MINUS, "*": MUL, "+": PLUS, "(": LPAREN, ")": RPAREN}
 
 
 class MyException(Exception):
     pass
 
 
-class Token(object):
+class Token:
     def __init__(self, type, value):
         self.type = type
         self.value = value
 
     def __str__(self):
-        return f'Token({self.type}, {self.value})'
-
-    # def __repr__(self):
-    #     return self.__str__()
+        return f"Token({self.type}, {self.value})"
 
 
-class Interpreter(object):
+class Lexer:
     def __init__(self, text):
         self.text = text
         self.pos = 0
-        self.current_token = None
         self.current_char = self.text[self.pos]
 
     def error(self, message="Error parsing input"):
@@ -49,7 +51,7 @@ class Interpreter(object):
     def integer(self):
         """Return a (multidigit) integer consumed from the input."""
         assert self.current_char.isdigit()
-        result = ''
+        result = ""
         while self.current_char is not None and self.current_char.isdigit():
             result += self.current_char
             self.advance()
@@ -70,17 +72,20 @@ class Interpreter(object):
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
 
-            if self.current_char == '+':
+            elif self.current_char in OPERATORS:
+                op = self.current_char
                 self.advance()
-                return Token(PLUS, '+')
-
-            if self.current_char == '-':
-                self.advance()
-                return Token(MINUS, '-')
+                return Token(OPERATORS[op], op)
 
             self.error()
 
         return Token(EOF, None)
+
+
+class Interpreter:
+    def __init__(self, text):
+        self.lexer = Lexer(text)
+        self.current_token = self.lexer.get_next_token()
 
     def eat(self, token_type):
         # compare the current token type with the passed token
@@ -88,34 +93,57 @@ class Interpreter(object):
         # and assign the next token to the self.current_token,
         # otherwise raise an exception.
         if self.current_token.type == token_type:
-            self.current_token = self.get_next_token()
+            self.current_token = self.lexer.get_next_token()
         else:
-            self.error()
+            self.lexer.error()
+
+    def factor(self):
+        """factor : INTEGER | LPAREN expr RPAREN"""
+        token = self.current_token
+        if token.type == INTEGER:
+            self.eat(INTEGER)
+            return token.value
+        elif token.type == LPAREN:
+            self.eat(LPAREN)
+            result = self.expr()
+            self.eat(RPAREN)
+            return result
 
     def term(self):
-        """For now, a term is simply an integer"""
-        token = self.current_token
-        self.eat(INTEGER)
-        return token.value
+        """term : factor ((MUL | DIV) factor)*"""
+        result = self.factor()
+
+        while self.current_token.type in (MUL, DIV):
+            token = self.current_token
+            if token.type == MUL:
+                self.eat(MUL)
+                result = result * self.factor()
+            elif token.type == DIV:
+                self.eat(DIV)
+                result = result / self.factor()
+
+        return result
 
     def expr(self):
-        """Parser / Interpreter
+        """Arithmetic expression parser / interpreter.
 
-        expr -> INTEGER PLUS INTEGER
-        expr -> INTEGER MINUS INTEGER
+        calc>  14 + 2 * 3 - 6 / 2
+        17
+
+        expr   : term ((PLUS | MINUS) term)*
+        term   : factor ((MUL | DIV) factor)*
+        factor : INTEGER
         """
-        # set current token to the first token taken from the input
-        self.current_token = self.get_next_token()
-
         result = self.term()
-        while self.current_token.type in (MINUS, PLUS):
+
+        while self.current_token.type in (PLUS, MINUS):
             token = self.current_token
-            if token.type == MINUS:
-                self.eat(MINUS)
-                result -= self.term()
-            elif token.type == PLUS:
+            if token.type == PLUS:
                 self.eat(PLUS)
-                result += self.term()
+                result = result + self.term()
+            elif token.type == MINUS:
+                self.eat(MINUS)
+                result = result - self.term()
 
         return result
 
@@ -123,7 +151,7 @@ class Interpreter(object):
 def main():
     while True:
         try:
-            text = input('calc> ')
+            text = input("calc> ")
         except EOFError:
             break
         if not text:
@@ -133,5 +161,5 @@ def main():
         print(result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
