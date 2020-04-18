@@ -1,4 +1,4 @@
-"""My own refactored version of calc,
+"""My own refactored version of a simple Pascal interpreter (spi),
 adding changes from the original, one version at a time."""
 
 # Token types
@@ -10,6 +10,13 @@ MUL = "MUL"
 PLUS = "PLUS"
 LPAREN = "LPAREN"
 RPAREN = "RPAREN"
+
+ASSIGN = ':='
+DOT = '.'
+ID = 'number'
+SEMI = ';'
+BEGIN = 'BEGIN'
+END = 'END'
 
 OPERATORS = {"/": DIV, "-": MINUS, "*": MUL, "+": PLUS, "(": LPAREN, ")": RPAREN}
 
@@ -25,6 +32,12 @@ class Token:
 
     def __str__(self):
         return f"Token({self.type}, {self.value})"
+
+
+RESERVED_KEYWORDS = {
+    'BEGIN': Token('BEGIN', 'BEGIN'),
+    'END': Token('END', 'END'),
+}
 
 
 class Lexer:
@@ -44,6 +57,13 @@ class Lexer:
         except IndexError:
             self.current_char = None
 
+    def peek(self):
+        """If it exists, returns the value of the next char."""
+        try:
+            return self.text[self.pos + 1]
+        except IndexError:
+            return None
+
     def skip_whitespace(self):
         while self.current_char is not None and self.current_char.isspace():
             self.advance()
@@ -56,6 +76,17 @@ class Lexer:
             result += self.current_char
             self.advance()
         return int(result)
+
+    def _id(self):
+        """Handle identifiers and reserved keywords"""
+        assert self.current_char.isalpha()
+        result = ''
+        while self.current_char is not None and self.current_char.isalnum():
+            result += self.current_char
+            self.advance()
+
+        token = RESERVED_KEYWORDS.get(result, Token(ID, result))
+        return token
 
     def get_next_token(self):
         """Lexical analyzer (also known as scanner or tokenizer)
@@ -72,10 +103,26 @@ class Lexer:
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
 
+            elif self.current_char.isalpha():
+                return self._id()
+
+            elif self.current_char == ':' and self.peek() == '=':
+                self.advance()
+                self.advance()
+                return Token(ASSIGN, ':=')
+
+            elif self.current_char == ';':
+                self.advance()
+                return Token(SEMI, ';')
+
             elif self.current_char in OPERATORS:
                 op = self.current_char
                 self.advance()
                 return Token(OPERATORS[op], op)
+
+            elif self.current_char == '.':
+                self.advance()
+                return Token(DOT, '.')
 
             self.error()
 
@@ -153,12 +200,7 @@ class Parser:
     def expr(self):
         """Arithmetic expression parser / interpreter.
 
-        calc>  14 + 2 * 3 - 6 / 2
-        17
-
         expr   : term ((PLUS | MINUS) term)*
-        term   : factor ((MUL | DIV) factor)*
-        factor : INTEGER
         """
         node = self.term()
 
