@@ -105,57 +105,72 @@ def test_lexer_subtraction():
 # ============================
 
 
+def interpret(text):
+    lexer = my_calc.Lexer(text)
+    parser = my_calc.Parser(lexer)
+    interpreter = my_calc.Interpreter(parser)
+    return interpreter.interpret()
+
+
 def test_do_addition():
-    interpreter = my_calc.Interpreter("10+22")
-    assert interpreter.expr() == 32
+    assert interpret("10+22") == 32
 
 
 def test_do_addition_with_spaces():
-    interpreter = my_calc.Interpreter(" 3 +  2")
-    assert interpreter.expr() == 5
+    assert interpret(" 3 +  2") == 5
 
 
 def test_do_subtraction_with_spaces():
-    interpreter = my_calc.Interpreter(" 33 -  22")
-    assert interpreter.expr() == 11
+    assert interpret(" 33 -  22") == 11
 
 
 def test_two_additions():
-    interpreter = my_calc.Interpreter("1 + 2 + 3")
-    assert interpreter.expr() == 6
+    assert interpret("1 + 2 + 3") == 6
 
 
 def test_mixed_additions_subtractions():
-    interpreter = my_calc.Interpreter("1 + 2 - 3")
-    assert interpreter.expr() == 0
+    assert interpret("1 + 2 - 3") == 0
 
 
 def test_do_multiplication():
-    interpreter = my_calc.Interpreter("10 * 22")
-    assert interpreter.expr() == 220
+    assert interpret("10 * 22") == 220
 
 
 def test_do_division():
-    interpreter = my_calc.Interpreter("220 / 10")
-    assert interpreter.expr() == 22
+    assert interpret("220 / 10") == 22
 
 
 def test_mixed_mul_div():
-    interpreter = my_calc.Interpreter("3 * 4 / 2")
-    assert interpreter.expr() == 6
+    assert interpret("3 * 4 / 2") == 6
 
 
 def test_mixed_addition_mul():
-    interpreter = my_calc.Interpreter("3 + 4 * 5")
-    assert interpreter.expr() == 23
-    interpreter = my_calc.Interpreter("4 * 5 + 3")
-    assert interpreter.expr() == 23
-    interpreter = my_calc.Interpreter("(3 + 4) * 5")
-    assert interpreter.expr() == 35
+    assert interpret("3 + 4 * 5") == 23
+
+    assert interpret("4 * 5 + 3") == 23
+
+    assert interpret("(3 + 4) * 5") == 35
 
 
 def test_mixed_sub_div():
-    interpreter = my_calc.Interpreter("8 - 4 / 2")
-    assert interpreter.expr() == 6
-    interpreter = my_calc.Interpreter("(8 - 4) / 2")
-    assert interpreter.expr() == 2
+    assert interpret("8 - 4 / 2") == 6
+
+    assert interpret("(8 - 4) / 2") == 2
+
+
+def test_mixed_expressions():
+    assert interpret("14 + 2 * 3 - 6 / 2") == 17
+
+    assert interpret("7 + 3 * (10 / (12 / (3 + 1) - 1))") == 22
+
+    assert interpret("7 + 3 * (10 / (12 / (3 + 1) - 1)) / (2 + 3) - 5 - 3 + (8)") == 10
+
+    assert interpret("7 + (((3 + 2)))") == 12
+
+
+def test_unary_ops():
+    assert interpret("++4") == 4
+    assert interpret("-4") == -4
+    assert interpret("--4") == 4
+    assert interpret("+-+4") == -4
+
