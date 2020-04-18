@@ -1,70 +1,72 @@
 # Use pytest to run
 import my_spi
 
-# ============================
-# Computations
-# ============================
 
-
-def interpret(text):
+def make_interpreter(text):
     lexer = my_spi.Lexer(text)
     parser = my_spi.Parser(lexer)
-    interpreter = my_spi.Interpreter(parser)
-    return interpreter.interpret()
+    return my_spi.Interpreter(parser)
 
 
-def test_do_addition():
-    assert interpret("10+22") == 32
+def test_arithmetic_expressions():
+    for expr, result in (
+        ('3', 3),
+        ('2 + 7 * 4', 30),
+        ('7 - 8 / 4', 5),
+        ('14 + 2 * 3 - 6 / 2', 17),
+        ('7 + 3 * (10 / (12 / (3 + 1) - 1))', 22),
+        ('7 + 3 * (10 / (12 / (3 + 1) - 1)) / (2 + 3) - 5 - 3 + (8)', 10),
+        ('7 + (((3 + 2)))', 12),
+        ('- 3', -3),
+        ('+ 3', 3),
+        ('5 - - - + - 3', 8),
+        ('5 - - - + - (3 + 4) - +2', 10),
+    ):
+        interpreter = make_interpreter('BEGIN a := %s END.' % expr)
+        interpreter.interpret()
+        assert interpreter.GLOBAL_SCOPE['a'] == result
 
 
-def test_do_addition_with_spaces():
-    assert interpret(" 3 +  2") == 5
+def test_statements():
+    text = """
+    BEGIN
+
+        BEGIN
+            number := 2;
+            a := number;
+            b := 10 * a + 10 * number / 4;
+            c := a - - b
+        END;
+
+        x := 11;
+    END.
+    """
+    interpreter = make_interpreter(text)
+    interpreter.interpret()
+    globals = interpreter.GLOBAL_SCOPE
+    assert len(globals) == 5
+    assert globals['number'] == 2
+    assert globals['a'] == 2
+    assert globals['b'] == 25
+    assert globals['c'] == 27
+    assert globals['x'] == 11
 
 
-def test_do_subtraction_with_spaces():
-    assert interpret(" 33 -  22") == 11
+def test_expression_invalid_syntax1():
+    interpreter = make_interpreter('BEGIN a := 10 * ; END.')
+    syntax_error = False
+    try:
+        interpreter.interpret()
+    except Exception:
+        syntax_error = True
+    assert syntax_error
 
 
-def test_two_additions():
-    assert interpret("1 + 2 + 3") == 6
-
-
-def test_mixed_additions_subtractions():
-    assert interpret("1 + 2 - 3") == 0
-
-
-def test_do_multiplication():
-    assert interpret("10 * 22") == 220
-
-
-def test_do_division():
-    assert interpret("220 / 10") == 22
-
-
-def test_mixed_mul_div():
-    assert interpret("3 * 4 / 2") == 6
-
-
-def test_mixed_addition_mul():
-    assert interpret("3 + 4 * 5") == 23
-    assert interpret("4 * 5 + 3") == 23
-    assert interpret("(3 + 4) * 5") == 35
-
-
-def test_mixed_sub_div():
-    assert interpret("8 - 4 / 2") == 6
-    assert interpret("(8 - 4) / 2") == 2
-
-
-def test_mixed_expressions():
-    assert interpret("14 + 2 * 3 - 6 / 2") == 17
-    assert interpret("7 + 3 * (10 / (12 / (3 + 1) - 1))") == 22
-    assert interpret("7 + 3 * (10 / (12 / (3 + 1) - 1)) / (2 + 3) - 5 - 3 + (8)") == 10
-    assert interpret("7 + (((3 + 2)))") == 12
-
-
-def test_unary_ops():
-    assert interpret("++4") == 4
-    assert interpret("-4") == -4
-    assert interpret("--4") == 4
-    assert interpret("+-+4") == -4
+def test_expression_invalid_syntax2():
+    interpreter = make_interpreter('BEGIN a := 1 (1 + 2); END.')
+    syntax_error = False
+    try:
+        interpreter.interpret()
+    except Exception:
+        syntax_error = True
+    assert syntax_error
